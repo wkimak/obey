@@ -9,6 +9,7 @@ import {
   Archive,
   TrendingUp,
 } from "lucide-react"
+import { UserButton } from "@clerk/nextjs";
 import {
   Sidebar,
   SidebarContent,
@@ -101,9 +102,12 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border px-4 py-3">
-        <p className="text-xs text-muted-foreground">
-          Track your trading discipline
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            Track your trading discipline
+          </p>
+          <UserButton />
+        </div>
       </SidebarFooter>
     </Sidebar>
   )
