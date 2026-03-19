@@ -1,9 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { GlobalRule } from "@/lib/types/api/strategies";
 
 type StrategyRuleRowDraft = {
@@ -53,17 +59,9 @@ export function StrategyRuleRow({
   return (
     <div className="space-y-2">
       <div className="relative">
-        <select
-          className="h-9 w-full appearance-none rounded-lg border border-input/30 bg-transparent px-2 pr-8 text-sm outline-none focus-visible:border-ring focus-visible:ring-ring/50"
-          value={selectValue}
-          onChange={(e) => {
-            const val = e.target.value;
-
-            if (val === "") {
-              updateRule(sectionId, row.id, { ruleInput: "" });
-              return;
-            }
-
+        <Select
+          value={selectValue || undefined}
+          onValueChange={(val) => {
             if (val === "__custom__") {
               // Keep current typed value (or start blank).
               updateRule(sectionId, row.id, {
@@ -75,28 +73,26 @@ export function StrategyRuleRow({
             const nextTitle = globalRuleTitleById.get(val) ?? "";
             updateRule(sectionId, row.id, { ruleInput: nextTitle });
           }}
-          aria-label="Select global rule"
         >
-          <option value="" disabled>
-            Select global rule...
-          </option>
+          <SelectTrigger className="bg-transparent border-input/30">
+            <SelectValue placeholder="Select global rule..." />
+          </SelectTrigger>
+          <SelectContent>
+            {globalRulesLoading ? (
+              <SelectItem value="__loading__" disabled>
+                Loading...
+              </SelectItem>
+            ) : (
+              globalRules.map((r) => (
+                <SelectItem key={r.id} value={r.id}>
+                  {r.title}
+                </SelectItem>
+              ))
+            )}
 
-          {globalRulesLoading ? (
-            <option value="" disabled>
-              Loading...
-            </option>
-          ) : (
-            globalRules.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.title}
-              </option>
-            ))
-          )}
-
-          <option value="__custom__">Custom...</option>
-        </select>
-
-        <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <SelectItem value="__custom__">Custom...</SelectItem>
+          </SelectContent>
+        </Select>
 
         {isCustom ? (
           <div className="mt-2">
