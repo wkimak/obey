@@ -87,8 +87,8 @@ export default function StrategyPage() {
       <StrategyHeader />
 
       {/* Content */}
-      <main className="flex-1 overflow-y-auto p-6">
-        <div className="mx-auto max-w-3xl space-y-6">
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-3xl space-y-6 px-6 py-6">
           {activeStrategyQuery.isLoading ? (
             <div className="rounded-lg border border-border p-6 text-muted-foreground">
               Loading strategy...

@@ -57,7 +57,7 @@ export function StrategyRuleRow({
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="h-9 w-full rounded-lg border border-input/30 bg-transparent px-2 text-sm text-left outline-none focus-visible:border-ring focus-visible:ring-ring/50"
+            className="h-9 w-full cursor-pointer rounded-lg border border-input/30 bg-transparent px-2 text-sm text-left outline-none focus-visible:border-ring focus-visible:ring-ring/50"
           >
             {inputTitle.length > 0 ? inputTitle : "Type to create strategy goal..."}
           </button>
