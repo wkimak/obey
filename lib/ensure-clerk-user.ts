@@ -14,6 +14,7 @@ export async function ensureClerkUserInDb() {
   if (!user) return; // `auth().protect()` should have already blocked unauthenticated requests.
 
   const clerkId = user.id;
+  if (!clerkId) return;
   const email = user.primaryEmailAddress?.emailAddress ?? null;
 
   const now = Date.now();
@@ -23,12 +24,12 @@ export async function ensureClerkUserInDb() {
   }
 
   await prisma.user.upsert({
-    where: { clerkId },
+    where: { id: clerkId },
     update: {
       email,
     },
     create: {
-      clerkId,
+      id: clerkId,
       email: email ?? undefined,
     },
   });

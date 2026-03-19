@@ -13,8 +13,8 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  clerkId   String   @unique
+  // Store Clerk's user id directly as the app's primary key.
+  id        String   @id
   email     String?
   createdAt DateTime @default(now())
 
