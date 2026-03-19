@@ -7,6 +7,7 @@ import {
   jsonZodError,
 } from "@/lib/api/http";
 import { UpdateReportBodySchema } from "@/lib/api/schemas/reports";
+import { assertReportDateNotInFuture } from "@/lib/api/assert-report-date";
 import { isoDateSchema, startOfUtcDay } from "@/lib/api/date";
 import { Prisma } from "@/lib/generated/prisma/client";
 import type { NextRequest } from "next/server";
@@ -71,6 +72,7 @@ export async function PATCH(
       notes: string | null;
     }> = {};
     if (parsed.data.reportDate !== undefined) {
+      assertReportDateNotInFuture(parsed.data.reportDate);
       const day = isoDateSchema.parse(parsed.data.reportDate);
       data.reportDate = startOfUtcDay(day);
     }

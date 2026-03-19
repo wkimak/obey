@@ -76,6 +76,10 @@ export default function ReportPage() {
         throw new Error("P&L must be a valid number");
       }
 
+      if (selectedYmd > todayLocalYmd()) {
+        throw new Error("Report date cannot be in the future");
+      }
+
       const notesPayload = notes.trim() === "" ? null : notes.trim();
       const key = reportQueryKey(strategyId, selectedYmd);
       const existing = queryClient.getQueryData(key) as

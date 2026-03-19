@@ -10,6 +10,7 @@ import {
   CreateReportBodySchema,
   GetReportsQuerySchema,
 } from "@/lib/api/schemas/reports";
+import { assertReportDateNotInFuture } from "@/lib/api/assert-report-date";
 import { isoDateSchema, endOfUtcDay, startOfUtcDay } from "@/lib/api/date";
 import { Prisma } from "@/lib/generated/prisma/client";
 import type { NextRequest } from "next/server";
@@ -118,6 +119,7 @@ export async function POST(
     });
     if (!strategy) return jsonError("Strategy not found", 404);
 
+    assertReportDateNotInFuture(parsed.data.reportDate);
     const day = isoDateSchema.parse(parsed.data.reportDate);
 
     const report = await prisma.report.create({

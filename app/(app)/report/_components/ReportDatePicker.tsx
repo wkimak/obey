@@ -13,6 +13,7 @@ import {
 import {
   formatReportDateLabel,
   localDateToYmd,
+  todayLocalYmd,
   ymdToLocalNoonDate,
 } from "@/lib/report-date";
 
@@ -53,6 +54,7 @@ export function ReportDatePicker({
               setOpen(false);
             }
           }}
+          disabled={(date) => localDateToYmd(date) > todayLocalYmd()}
           showOutsideDays
           className="p-3 [--rdp-accent-color:var(--primary)] [--rdp-background-color:var(--background)]"
         />
