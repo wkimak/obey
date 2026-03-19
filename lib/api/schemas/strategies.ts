@@ -1,11 +1,14 @@
 import { z } from "zod";
 
-const nullableString = z.string().trim().min(1).nullable().optional();
+// `section` can be `null` (DB column is nullable).
+// `displayText` should never be `null` (sent as empty string if blank).
+const nullableString = z.string().trim().min(1).nullable();
+const nonNullableString = z.string().trim();
 
 export const StrategyRuleExistingSchema = z.object({
   ruleId: z.string().min(1),
   section: nullableString,
-  displayText: nullableString,
+  displayText: nonNullableString,
   displayOrder: z.number().int().nonnegative(),
 });
 
@@ -14,7 +17,7 @@ export const StrategyRuleNewSchema = z.object({
   key: z.string().trim().min(1).nullable().optional(),
   description: z.string().trim().nullable().optional(),
   section: nullableString,
-  displayText: nullableString,
+  displayText: nonNullableString,
   displayOrder: z.number().int().nonnegative(),
 });
 

@@ -70,7 +70,7 @@ model StrategyRule {
   strategyId   String
   ruleId       String
   section      String?
-  displayText  String?
+  displayText  String
   displayOrder Int
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

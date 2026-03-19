@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
               strategyId: createdStrategy.id,
               ruleId,
               section: item.section ?? null,
-              displayText: item.displayText ?? null,
+              displayText: item.displayText,
               displayOrder: item.displayOrder,
             };
           }),
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
             strategyId: createdStrategy.id,
             ruleId: newRule.id,
             section: item.section ?? null,
-            displayText: item.displayText ?? null,
+            displayText: item.displayText,
             displayOrder: item.displayOrder,
           },
         });
