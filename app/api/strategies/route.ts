@@ -40,6 +40,12 @@ export async function POST(req: NextRequest) {
     const strategy = await prisma.$transaction(async (tx) => {
       const { name, description, rules } = parsed.data as CreateStrategyBody;
 
+      // At most one non-archived strategy per user: archive the current one before creating.
+      await tx.strategy.updateMany({
+        where: { userId, archived: false },
+        data: { archived: true },
+      });
+
       const createdStrategy = await tx.strategy.create({
         data: {
           userId,

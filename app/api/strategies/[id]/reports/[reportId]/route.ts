@@ -42,14 +42,14 @@ export async function PATCH(
   req: NextRequest,
   {
     params,
-  }: { params: Promise<{ strategyId?: string; reportId?: string }> },
+  }: { params: Promise<{ id?: string; reportId?: string }> },
 ) {
   const userId = await requireUserId();
   if (!userId) return jsonError("Unauthorized", 401);
 
-  const { strategyId, reportId } = await params;
+  const { id: strategyId, reportId } = await params;
   if (!strategyId || !reportId) {
-    return jsonError("Missing strategyId or reportId", 400);
+    return jsonError("Missing id or reportId", 400);
   }
 
   const body = await req.json().catch(() => null);

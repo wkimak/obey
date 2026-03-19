@@ -30,6 +30,16 @@ export type Strategy = {
   strategyRules: StrategyRuleWithRule[];
 };
 
+export type StrategyListItem = {
+  id: string;
+  name: string;
+  description?: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  archived: boolean;
+  ruleCount: number;
+};
+
 export type CreateStrategyRuleExisting = {
   ruleId: string;
   section: string | null;

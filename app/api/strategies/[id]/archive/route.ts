@@ -26,17 +26,35 @@ export async function PATCH(
   if (!parsed.success) return jsonZodError(parsed.error);
 
   try {
-    const updated = await prisma.strategy.updateMany({
-      where: { id: strategyId, userId },
-      data: { archived: parsed.data.archived },
+    const strategy = await prisma.$transaction(async (tx) => {
+      const target = await tx.strategy.findFirst({
+        where: { id: strategyId, userId },
+        select: { id: true, archived: true },
+      });
+      if (!target) return null;
+
+      const shouldArchive = parsed.data.archived;
+
+      if (!shouldArchive) {
+        // Restoring an archived strategy makes it the active one.
+        await tx.strategy.updateMany({
+          where: { userId, id: { not: strategyId } },
+          data: { archived: true },
+        });
+      }
+
+      await tx.strategy.update({
+        where: { id: strategyId },
+        data: { archived: shouldArchive },
+      });
+
+      return tx.strategy.findUnique({
+        where: { id: strategyId },
+        select: { id: true, name: true, archived: true, updatedAt: true },
+      });
     });
 
-    if (updated.count === 0) return jsonError("Strategy not found", 404);
-
-    const strategy = await prisma.strategy.findUnique({
-      where: { id: strategyId },
-      select: { id: true, name: true, archived: true, updatedAt: true },
-    });
+    if (!strategy) return jsonError("Strategy not found", 404);
 
     return jsonOk({ strategy });
   } catch (err) {

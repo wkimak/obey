@@ -37,4 +37,3 @@ export async function createStrategy(body: CreateStrategyBody) {
   const data = (await res.json()) as { strategy: Strategy };
   return data.strategy;
 }
-

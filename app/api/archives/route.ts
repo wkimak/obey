@@ -16,6 +16,9 @@ export async function GET() {
       archived: true,
       updatedAt: true,
       createdAt: true,
+      _count: {
+        select: { strategyRules: true },
+      },
     },
   });
 

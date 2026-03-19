@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
+import { archiveStrategyById } from "@/lib/api/archives";
 import {
   createStrategy,
   fetchActiveStrategy,
@@ -52,6 +53,14 @@ export default function StrategyPage() {
       await queryClient.invalidateQueries({ queryKey: activeKey });
     },
   });
+
+  const archiveStrategyMutation = useMutation({
+    mutationFn: (strategyId: string) => archiveStrategyById(strategyId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: activeKey });
+      await queryClient.invalidateQueries({ queryKey: ["archives"] });
+    },
+  });
   async function handleCreateSubmit(payload: {
     rules: CreateStrategyBody["rules"];
   }) {
@@ -98,7 +107,20 @@ export default function StrategyPage() {
               {String(activeStrategyQuery.error)}
             </div>
           ) : activeStrategyQuery.data ? (
-            <ActiveStrategyCard strategy={activeStrategyQuery.data} />
+            <>
+              {(() => {
+                const activeStrategy = activeStrategyQuery.data;
+                return (
+              <ActiveStrategyCard
+                strategy={activeStrategy}
+                isArchiving={archiveStrategyMutation.isPending}
+                onArchive={() => {
+                  void archiveStrategyMutation.mutateAsync(activeStrategy.id);
+                }}
+              />
+                );
+              })()}
+            </>
           ) : (
             <EmptyState onCreate={() => setCreateOpen(true)} />
           )}
