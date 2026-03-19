@@ -11,6 +11,7 @@ type StrategyRuleRowDraft = {
   id: string;
   ruleInput: string;
   optionalDescription: string;
+  selectedGlobalRuleId: string | null;
 };
 
 type StrategySectionDraft = {
@@ -24,9 +25,6 @@ type StrategySectionCardProps = {
   sectionIndex: number;
   globalRules: GlobalRule[];
   globalRulesLoading: boolean;
-
-  globalRuleIdByTitleLower: Map<string, string>;
-  globalRuleTitleById: Map<string, string>;
 
   updateSectionName: (sectionId: string, nextName: string) => void;
   updateRule: (
@@ -45,8 +43,6 @@ export function StrategySectionCard({
   sectionIndex,
   globalRules,
   globalRulesLoading,
-  globalRuleIdByTitleLower,
-  globalRuleTitleById,
   updateSectionName,
   updateRule,
   addRule,
@@ -88,8 +84,6 @@ export function StrategySectionCard({
             row={row}
             globalRules={globalRules}
             globalRulesLoading={globalRulesLoading}
-            globalRuleIdByTitleLower={globalRuleIdByTitleLower}
-            globalRuleTitleById={globalRuleTitleById}
             updateRule={updateRule}
             onRemoveRule={() => removeRule(section.id, row.id)}
             canRemoveRule={!(sectionIndex === 0 && ruleIndex === 0)}

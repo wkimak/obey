@@ -12,6 +12,7 @@ type StrategyRuleRowDraft = {
   id: string;
   ruleInput: string;
   optionalDescription: string;
+  selectedGlobalRuleId: string | null;
 };
 
 type StrategySectionDraft = {
@@ -64,26 +65,11 @@ export function CreateStrategyModal({
     {
       id: makeId(),
       name: "General Rules",
-      rules: [{ id: makeId(), ruleInput: "", optionalDescription: "" }],
+      rules: [
+        { id: makeId(), ruleInput: "", optionalDescription: "", selectedGlobalRuleId: null },
+      ],
     },
   ]);
-
-  const globalRuleIdByTitleLower = React.useMemo(() => {
-    const map = new Map<string, string>();
-    for (const r of globalRules) {
-      const key = r.title.trim().toLowerCase();
-      if (!map.has(key)) map.set(key, r.id);
-    }
-    return map;
-  }, [globalRules]);
-
-  const globalRuleTitleById = React.useMemo(() => {
-    const map = new Map<string, string>();
-    for (const r of globalRules) {
-      map.set(r.id, r.title);
-    }
-    return map;
-  }, [globalRules]);
 
   function addSection() {
     setSections((prev) => [
@@ -91,7 +77,9 @@ export function CreateStrategyModal({
       {
         id: makeId(),
         name: `Section ${prev.length + 1}`,
-        rules: [{ id: makeId(), ruleInput: "", optionalDescription: "" }],
+        rules: [
+          { id: makeId(), ruleInput: "", optionalDescription: "", selectedGlobalRuleId: null },
+        ],
       },
     ]);
   }
@@ -105,7 +93,7 @@ export function CreateStrategyModal({
               ...s,
               rules: [
                 ...s.rules,
-                { id: makeId(), ruleInput: "", optionalDescription: "" },
+                { id: makeId(), ruleInput: "", optionalDescription: "", selectedGlobalRuleId: null },
               ],
             },
       ),
@@ -172,26 +160,27 @@ export function CreateStrategyModal({
         const inputTitle = row.ruleInput.trim();
         if (!inputTitle) continue;
 
-        const displayText = row.optionalDescription.trim();
-        const matchedRuleId = globalRuleIdByTitleLower.get(
-          inputTitle.toLowerCase(),
-        );
+        if (row.selectedGlobalRuleId) {
+          const displayText = row.optionalDescription.trim();
+          if (!displayText) continue;
 
-        if (matchedRuleId) {
           out.push({
-            ruleId: matchedRuleId,
+            ruleId: row.selectedGlobalRuleId,
             section: sectionValue,
             displayText,
             displayOrder,
           });
         } else {
+          const description = normalizeNullableString(row.optionalDescription);
+
           out.push({
             title: inputTitle,
             key: null,
-            // Using the same optional field for both rule description + strategy display text.
-            description: displayText,
+            // For custom/strategy-specific rules, keep the typed input as the strategy value,
+            // and let the optional description become the rule description (nullable).
+            description,
             section: sectionValue,
-            displayText,
+            displayText: inputTitle,
             displayOrder,
           });
         }
@@ -205,6 +194,22 @@ export function CreateStrategyModal({
 
   async function handleCreate() {
     setLocalError(null);
+
+    // FE validation: if a global rule is selected, `displayText` (Value) is required.
+    for (const section of sections) {
+      for (const row of section.rules) {
+        const inputTitle = row.ruleInput.trim();
+        if (!inputTitle) continue;
+
+        if (row.selectedGlobalRuleId) {
+          const displayText = row.optionalDescription.trim();
+          if (!displayText) {
+            setLocalError("Value is required for global rules.");
+            return;
+          }
+        }
+      }
+    }
 
     const rules = buildPayloadRules();
     if (rules.length < 1) {
@@ -283,8 +288,6 @@ export function CreateStrategyModal({
                 section={section}
                 globalRules={globalRules}
                 globalRulesLoading={globalRulesLoading}
-                globalRuleIdByTitleLower={globalRuleIdByTitleLower}
-                globalRuleTitleById={globalRuleTitleById}
                 updateSectionName={updateSectionName}
                 updateRule={updateRule}
                 addRule={addRule}

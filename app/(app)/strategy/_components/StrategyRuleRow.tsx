@@ -3,19 +3,22 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import type { GlobalRule } from "@/lib/types/api/strategies";
 
 type StrategyRuleRowDraft = {
   id: string;
   ruleInput: string;
   optionalDescription: string;
+  selectedGlobalRuleId: string | null;
 };
 
 type StrategyRuleRowProps = {
@@ -23,9 +26,6 @@ type StrategyRuleRowProps = {
   row: StrategyRuleRowDraft;
   globalRules: GlobalRule[];
   globalRulesLoading: boolean;
-
-  globalRuleIdByTitleLower: Map<string, string>;
-  globalRuleTitleById: Map<string, string>;
 
   updateRule: (
     sectionId: string,
@@ -42,71 +42,70 @@ export function StrategyRuleRow({
   row,
   globalRules,
   globalRulesLoading,
-  globalRuleIdByTitleLower,
-  globalRuleTitleById,
   updateRule,
   onRemoveRule,
   canRemoveRule,
 }: StrategyRuleRowProps) {
-  const inputTitle = row.ruleInput.trim();
-  const matchedRuleId = inputTitle
-    ? globalRuleIdByTitleLower.get(inputTitle.toLowerCase())
-    : undefined;
+  const [open, setOpen] = React.useState(false);
 
-  const isCustom = !matchedRuleId && inputTitle.length > 0;
-  const selectValue = inputTitle ? (matchedRuleId ?? "__custom__") : "";
+  const inputTitle = row.ruleInput.trim();
+  const isGlobal = row.selectedGlobalRuleId !== null;
 
   return (
     <div className="space-y-2">
-      <div className="relative">
-        <Select
-          value={selectValue || undefined}
-          onValueChange={(val) => {
-            if (val === "__custom__") {
-              // Keep current typed value (or start blank).
-              updateRule(sectionId, row.id, {
-                ruleInput: row.ruleInput.trim().length > 0 ? row.ruleInput : "",
-              });
-              return;
-            }
-
-            const nextTitle = globalRuleTitleById.get(val) ?? "";
-            updateRule(sectionId, row.id, { ruleInput: nextTitle });
-          }}
-        >
-          <SelectTrigger className="bg-transparent border-input/30">
-            <SelectValue placeholder="Select global rule..." />
-          </SelectTrigger>
-          <SelectContent>
-            {globalRulesLoading ? (
-              <SelectItem value="__loading__" disabled>
-                Loading...
-              </SelectItem>
-            ) : (
-              globalRules.map((r) => (
-                <SelectItem key={r.id} value={r.id}>
-                  {r.title}
-                </SelectItem>
-              ))
-            )}
-
-            <SelectItem value="__custom__">Custom...</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {isCustom ? (
-          <div className="mt-2">
-            <Input
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="h-9 w-full rounded-lg border border-input/30 bg-transparent px-2 text-sm text-left outline-none focus-visible:border-ring focus-visible:ring-ring/50"
+          >
+            {inputTitle.length > 0 ? inputTitle : "Type to create strategy goal..."}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[320px] p-0" align="start">
+          <Command>
+            <CommandInput
               value={row.ruleInput}
-              onChange={(e) =>
-                updateRule(sectionId, row.id, { ruleInput: e.target.value })
-              }
-              placeholder="Custom rule title"
-              className="border-input/30"
+              onValueChange={(v) => {
+                // Typing means "strategy specific"; only selecting from the list is "global".
+                updateRule(sectionId, row.id, {
+                  ruleInput: v,
+                  selectedGlobalRuleId: null,
+                });
+              }}
+              placeholder="Search global rules or type a new goal..."
             />
-          </div>
-        ) : null}
-      </div>
+            <CommandList>
+              <CommandEmpty>
+                No global rules match. Your typed text will be treated as strategy-specific.
+              </CommandEmpty>
+              <CommandGroup heading="Global rules">
+                {globalRulesLoading ? (
+                  <CommandItem value="__loading__" disabled>
+                    Loading...
+                  </CommandItem>
+                ) : (
+                  globalRules.map((r) => (
+                    <CommandItem
+                      key={r.id}
+                      value={r.title}
+                      onSelect={() => {
+                        updateRule(sectionId, row.id, {
+                          ruleInput: r.title,
+                          selectedGlobalRuleId: r.id,
+                        });
+                        setOpen(false);
+                      }}
+                    >
+                      {r.title}
+                    </CommandItem>
+                  ))
+                )}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
 
       <Input
         value={row.optionalDescription}
@@ -115,8 +114,9 @@ export function StrategyRuleRow({
             optionalDescription: e.target.value,
           })
         }
-        placeholder="Optional description..."
+        placeholder={isGlobal ? "Value" : "Optional description..."}
         className="border-input/30"
+        required={isGlobal}
       />
 
       {canRemoveRule ? (
