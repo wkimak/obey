@@ -137,6 +137,15 @@ export async function POST(
       }),
     });
   } catch (err) {
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      return jsonError(
+        "A report already exists for this strategy and date",
+        409,
+      );
+    }
     return errorToResponse(err);
   }
 }

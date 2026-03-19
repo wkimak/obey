@@ -98,7 +98,7 @@ model Report {
 
   brokenRules BrokenRule[]
 
-  @@unique([userId, reportDate])
+  @@unique([strategyId, reportDate])
   @@index([userId])
   @@index([strategyId])
 }

@@ -94,6 +94,15 @@ export async function PATCH(
     if (!updated) return jsonError("Report not found", 404);
     return jsonOk({ report: serializeReport(updated) });
   } catch (err) {
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      return jsonError(
+        "A report already exists for this strategy and date",
+        409,
+      );
+    }
     return errorToResponse(err);
   }
 }
