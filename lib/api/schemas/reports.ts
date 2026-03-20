@@ -10,7 +10,7 @@ export const GetReportsQuerySchema = z.object({
 
 export const CreateReportBodySchema = z.object({
   reportDate: dateYmdSchema,
-  pnl: z.union([z.string().min(1), z.number()]),
+  pnl: z.union([z.string().min(1, "P&L is required"), z.number()]),
   notes: z.string().trim().nullable().optional(),
 });
 

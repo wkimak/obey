@@ -25,7 +25,7 @@ export async function GET(
     });
 
     const reports = await prisma.report.findMany({
-      where: { strategyId, userId },
+      where: { strategyId },
       orderBy: { reportDate: "asc" },
       select: {
         reportDate: true,

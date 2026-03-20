@@ -60,16 +60,19 @@ export async function PATCH(
   if (!parsed.success) return jsonZodError(parsed.error);
 
   try {
-    const owned = await prisma.report.findFirst({
-      where: { id: reportId, userId, strategyId },
-      select: { id: true },
+    const existing = await prisma.report.findFirst({
+      where: { id: reportId, strategyId },
+      include: { strategy: { select: { userId: true } } },
     });
-    if (!owned) return jsonError("Report not found", 404);
+    if (!existing || existing.strategy.userId !== userId) {
+      return jsonError("Report not found", 404);
+    }
 
     const data: Partial<{
       reportDate: Date;
       pnl: InstanceType<typeof Prisma.Decimal>;
       notes: string | null;
+      userId: string;
     }> = {};
     if (parsed.data.reportDate !== undefined) {
       assertReportDateNotInFuture(parsed.data.reportDate);
@@ -82,9 +85,12 @@ export async function PATCH(
     if (parsed.data.notes !== undefined) {
       data.notes = parsed.data.notes ?? null;
     }
+    if (existing.userId !== userId) {
+      data.userId = userId;
+    }
 
     await prisma.report.updateMany({
-      where: { id: reportId, userId, strategyId },
+      where: { id: reportId, strategyId },
       data,
     });
 

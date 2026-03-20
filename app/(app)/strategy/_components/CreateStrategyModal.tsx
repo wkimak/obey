@@ -192,6 +192,23 @@ export function CreateStrategyModal({
     return out;
   }
 
+  /** Same rules as handleCreate — keeps Create button disabled until valid (like report Save). */
+  const canSubmit = React.useMemo(() => {
+    if (!name.trim()) return false;
+
+    for (const section of sections) {
+      for (const row of section.rules) {
+        const inputTitle = row.ruleInput.trim();
+        if (!inputTitle) continue;
+        if (row.selectedGlobalRuleId && !row.optionalDescription.trim()) {
+          return false;
+        }
+      }
+    }
+
+    return buildPayloadRules().length >= 1;
+  }, [name, sections]);
+
   async function handleCreate() {
     setLocalError(null);
 
@@ -313,7 +330,7 @@ export function CreateStrategyModal({
             onClick={() => {
               void handleCreate();
             }}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !canSubmit}
           >
             {isSubmitting ? "Creating..." : "Create Strategy"}
           </Button>

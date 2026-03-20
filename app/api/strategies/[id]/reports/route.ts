@@ -67,23 +67,36 @@ export async function GET(
 
     if (parsedQuery.data.date) {
       const day = isoDateSchema.parse(parsedQuery.data.date);
+      const start = startOfUtcDay(day);
+      const end = endOfUtcDay(day);
+      // Scope by strategy only (strategy ownership already verified). Avoid missing
+      // rows where Report.userId is stale vs Strategy.userId after migrations/swaps.
       const report = await prisma.report.findFirst({
         where: {
-          userId,
           strategyId,
-          reportDate: { gte: startOfUtcDay(day), lte: endOfUtcDay(day) },
+          reportDate: { gte: start, lte: end },
         },
         include: {
           brokenRules: { select: { ruleId: true } },
+          strategy: { select: { userId: true } },
         },
       });
       if (!report) return jsonError("Report not found", 404);
+      if (report.strategy.userId !== userId) {
+        return jsonError("Report not found", 404);
+      }
+      if (report.userId !== userId) {
+        await prisma.report.update({
+          where: { id: report.id },
+          data: { userId },
+        });
+      }
 
       return jsonOk({ report: serializeReport(report) });
     }
 
     const reports = await prisma.report.findMany({
-      where: { userId, strategyId },
+      where: { strategyId },
       orderBy: { reportDate: "desc" },
       include: {
         brokenRules: { select: { ruleId: true } },
@@ -121,12 +134,44 @@ export async function POST(
 
     assertReportDateNotInFuture(parsed.data.reportDate);
     const day = isoDateSchema.parse(parsed.data.reportDate);
+    const reportDate = startOfUtcDay(day);
+
+    const existingForDay = await prisma.report.findFirst({
+      where: {
+        strategyId,
+        reportDate: { gte: reportDate, lte: endOfUtcDay(day) },
+      },
+      include: {
+        brokenRules: { select: { ruleId: true } },
+        strategy: { select: { userId: true } },
+      },
+    });
+
+    if (existingForDay) {
+      if (existingForDay.strategy.userId !== userId) {
+        return jsonError("Strategy not found", 404);
+      }
+      const pnlDec = new Prisma.Decimal(parsed.data.pnl.toString());
+      const notesVal = parsed.data.notes ?? null;
+      const updated = await prisma.report.update({
+        where: { id: existingForDay.id },
+        data: {
+          userId,
+          pnl: pnlDec,
+          notes: notesVal,
+        },
+        include: {
+          brokenRules: { select: { ruleId: true } },
+        },
+      });
+      return jsonOk({ report: serializeReport(updated) });
+    }
 
     const report = await prisma.report.create({
       data: {
         userId,
         strategyId,
-        reportDate: startOfUtcDay(day),
+        reportDate,
         pnl: new Prisma.Decimal(parsed.data.pnl.toString()),
         notes: parsed.data.notes ?? null,
       },
@@ -143,6 +188,30 @@ export async function POST(
       err instanceof Prisma.PrismaClientKnownRequestError &&
       err.code === "P2002"
     ) {
+      const day = isoDateSchema.parse(parsed.data.reportDate);
+      const recovered = await prisma.report.findFirst({
+        where: {
+          strategyId,
+          reportDate: {
+            gte: startOfUtcDay(day),
+            lte: endOfUtcDay(day),
+          },
+        },
+        include: {
+          brokenRules: { select: { ruleId: true } },
+          strategy: { select: { userId: true } },
+        },
+      });
+      if (recovered && recovered.strategy.userId === userId) {
+        const pnlDec = new Prisma.Decimal(parsed.data.pnl.toString());
+        const notesVal = parsed.data.notes ?? null;
+        const updated = await prisma.report.update({
+          where: { id: recovered.id },
+          data: { userId, pnl: pnlDec, notes: notesVal },
+          include: { brokenRules: { select: { ruleId: true } } },
+        });
+        return jsonOk({ report: serializeReport(updated) });
+      }
       return jsonError(
         "A report already exists for this strategy and date",
         409,

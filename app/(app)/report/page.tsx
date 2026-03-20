@@ -5,7 +5,12 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Save } from "lucide-react";
 
-import { createReport, fetchReportForDate, updateReport } from "@/lib/api/reports";
+import {
+  createReport,
+  fetchReportForDate,
+  replaceBrokenRules,
+  updateReport,
+} from "@/lib/api/reports";
 import { fetchActiveStrategy } from "@/lib/api/strategies";
 import { todayLocalYmd } from "@/lib/report-date";
 import { Button } from "@/components/ui/button";
@@ -15,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { ReportDatePicker } from "./_components/ReportDatePicker";
 import { ReportHeader } from "./_components/ReportHeader";
+import { RulesBrokenSection } from "./_components/RulesBrokenSection";
 
 const activeKey = ["strategies", "active"] as const;
 
@@ -29,6 +35,7 @@ export default function ReportPage() {
   const [notes, setNotes] = React.useState("");
   const [formError, setFormError] = React.useState<string | null>(null);
   const [saveBanner, setSaveBanner] = React.useState<string | null>(null);
+  const [brokenRuleIds, setBrokenRuleIds] = React.useState<string[]>([]);
 
   const activeStrategyQuery = useQuery({
     queryKey: activeKey,
@@ -36,12 +43,6 @@ export default function ReportPage() {
   });
 
   const strategyId = activeStrategyQuery.data?.id;
-
-  React.useEffect(() => {
-    setPnlInput("");
-    setNotes("");
-    setFormError(null);
-  }, [selectedYmd, strategyId]);
 
   const reportQuery = useQuery({
     queryKey: strategyId
@@ -51,12 +52,64 @@ export default function ReportPage() {
     enabled: Boolean(strategyId),
   });
 
+  const serverBrokenRulesKey = React.useMemo(() => {
+    const ids = reportQuery.data?.brokenRuleIds;
+    if (!reportQuery.data) return "none";
+    if (!ids?.length) return "empty";
+    return [...ids].sort().join("|");
+  }, [reportQuery.data, reportQuery.data?.brokenRuleIds]);
+
+  /** Server snapshot for edit mode — Update stays disabled until form differs. */
+  const editBaseline = React.useMemo(() => {
+    const r = reportQuery.data;
+    if (!r) return null;
+    return {
+      pnlStr: String(r.pnl),
+      notes: r.notes ?? "",
+      brokenKey: [...r.brokenRuleIds].sort().join("|"),
+    };
+  }, [
+    reportQuery.data?.id,
+    reportQuery.data?.pnl,
+    reportQuery.data?.notes,
+    serverBrokenRulesKey,
+  ]);
+
+  const brokenKeyCurrent = React.useMemo(
+    () => [...brokenRuleIds].sort().join("|"),
+    [brokenRuleIds],
+  );
+
+  const isEditDirty =
+    editBaseline !== null &&
+    (pnlInput !== editBaseline.pnlStr ||
+      notes !== editBaseline.notes ||
+      brokenKeyCurrent !== editBaseline.brokenKey);
+
+  React.useEffect(() => {
+    setPnlInput("");
+    setNotes("");
+    setBrokenRuleIds([]);
+    setFormError(null);
+  }, [selectedYmd, strategyId]);
+
+  React.useEffect(() => {
+    if (!strategyId || !reportQuery.isFetched) return;
+    if (reportQuery.data) {
+      setBrokenRuleIds([...reportQuery.data.brokenRuleIds]);
+    }
+  }, [
+    strategyId,
+    selectedYmd,
+    reportQuery.isFetched,
+    reportQuery.data?.id,
+    serverBrokenRulesKey,
+  ]);
+
   React.useEffect(() => {
     if (!strategyId || !reportQuery.isSuccess) return;
     if (reportQuery.data) {
-      setPnlInput(
-        reportQuery.data.pnl === 0 ? "" : String(reportQuery.data.pnl),
-      );
+      setPnlInput(String(reportQuery.data.pnl));
       setNotes(reportQuery.data.notes ?? "");
     }
   }, [strategyId, selectedYmd, reportQuery.isSuccess, reportQuery.data]);
@@ -70,11 +123,6 @@ export default function ReportPage() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!strategyId) throw new Error("No active strategy");
-      const pnlRaw = pnlInput.trim() === "" ? "0" : pnlInput.trim();
-      const pnlNum = Number(pnlRaw);
-      if (Number.isNaN(pnlNum)) {
-        throw new Error("P&L must be a valid number");
-      }
 
       if (selectedYmd > todayLocalYmd()) {
         throw new Error("Report date cannot be in the future");
@@ -86,19 +134,47 @@ export default function ReportPage() {
         | Awaited<ReturnType<typeof fetchReportForDate>>
         | undefined;
 
+      const pnlRaw = pnlInput.trim();
+      let pnlNum: number;
       if (existing) {
-        const report = await updateReport(strategyId, existing.id, {
+        if (pnlRaw) {
+          pnlNum = Number(pnlRaw);
+          if (Number.isNaN(pnlNum)) {
+            throw new Error("P&L must be a valid number");
+          }
+        } else {
+          pnlNum = existing.pnl;
+        }
+      } else {
+        if (!pnlRaw) throw new Error("P&L is required");
+        pnlNum = Number(pnlRaw);
+        if (Number.isNaN(pnlNum)) {
+          throw new Error("P&L must be a valid number");
+        }
+      }
+
+      const distinctBroken = Array.from(new Set(brokenRuleIds));
+
+      let report;
+      if (existing) {
+        report = await updateReport(strategyId, existing.id, {
           pnl: pnlNum,
           notes: notesPayload,
         });
-        return { mode: "update" as const, report };
+      } else {
+        report = await createReport(strategyId, {
+          reportDate: selectedYmd,
+          pnl: pnlNum,
+          notes: notesPayload,
+        });
       }
-      const report = await createReport(strategyId, {
-        reportDate: selectedYmd,
-        pnl: pnlNum,
-        notes: notesPayload,
-      });
-      return { mode: "create" as const, report };
+
+      await replaceBrokenRules(strategyId, report.id, distinctBroken);
+
+      return {
+        mode: existing ? ("update" as const) : ("create" as const),
+        report,
+      };
     },
     onSuccess: async (result) => {
       if (strategyId) {
@@ -115,6 +191,11 @@ export default function ReportPage() {
     },
     onError: (err: Error) => {
       setFormError(err.message);
+      if (strategyId) {
+        void queryClient.invalidateQueries({
+          queryKey: reportQueryKey(strategyId, selectedYmd),
+        });
+      }
     },
   });
 
@@ -188,6 +269,23 @@ export default function ReportPage() {
                   />
                 </div>
 
+                <RulesBrokenSection
+                  strategyRules={
+                    activeStrategyQuery.data?.strategyRules ?? []
+                  }
+                  brokenRuleIds={brokenRuleIds}
+                  disabled={formDisabled || saveMutation.isPending}
+                  onToggleRule={(ruleId, nextBroken) => {
+                    setBrokenRuleIds((prev) =>
+                      nextBroken
+                        ? prev.includes(ruleId)
+                          ? prev
+                          : [...prev, ruleId]
+                        : prev.filter((id) => id !== ruleId),
+                    );
+                  }}
+                />
+
                 {formError ? (
                   <p className="text-sm text-destructive">{formError}</p>
                 ) : null}
@@ -195,7 +293,11 @@ export default function ReportPage() {
                 <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:justify-end">
                   <Button
                     type="button"
-                    disabled={formDisabled || saveMutation.isPending}
+                    disabled={
+                      formDisabled ||
+                      saveMutation.isPending ||
+                      (isEdit ? !isEditDirty : !pnlInput.trim())
+                    }
                     onClick={() => saveMutation.mutate()}
                     className="gap-2"
                   >

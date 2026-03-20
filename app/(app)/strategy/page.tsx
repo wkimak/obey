@@ -51,6 +51,7 @@ export default function StrategyPage() {
       setName("");
       setDescription(null);
       await queryClient.invalidateQueries({ queryKey: activeKey });
+      await queryClient.invalidateQueries({ queryKey: ["report"] });
     },
   });
 
@@ -59,6 +60,7 @@ export default function StrategyPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: activeKey });
       await queryClient.invalidateQueries({ queryKey: ["archives"] });
+      await queryClient.invalidateQueries({ queryKey: ["report"] });
     },
   });
   async function handleCreateSubmit(payload: {

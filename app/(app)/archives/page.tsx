@@ -34,6 +34,7 @@ export default function ArchivesPage() {
       await queryClient.invalidateQueries({ queryKey: ["archives"] });
       await queryClient.invalidateQueries({ queryKey: ["strategies", "active"] });
       await queryClient.invalidateQueries({ queryKey: ["strategies", "list"] });
+      await queryClient.invalidateQueries({ queryKey: ["report"] });
     },
   });
 
@@ -43,6 +44,7 @@ export default function ArchivesPage() {
       await queryClient.invalidateQueries({ queryKey: ["archives"] });
       await queryClient.invalidateQueries({ queryKey: ["strategies", "active"] });
       await queryClient.invalidateQueries({ queryKey: ["strategies", "list"] });
+      await queryClient.invalidateQueries({ queryKey: ["report"] });
     },
   });
 
