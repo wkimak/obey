@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Save } from "lucide-react";
 
@@ -12,7 +13,7 @@ import {
   updateReport,
 } from "@/lib/api/reports";
 import { fetchActiveStrategy } from "@/lib/api/strategies";
-import { todayLocalYmd } from "@/lib/report-date";
+import { todayLocalYmd, ymdToLocalNoonDate } from "@/lib/report-date";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,9 +29,24 @@ function reportQueryKey(strategyId: string, ymd: string) {
   return ["report", strategyId, ymd] as const;
 }
 
+function isValidYmd(s: string): boolean {
+  const d = ymdToLocalNoonDate(s);
+  return !Number.isNaN(d.getTime());
+}
+
 export default function ReportPage() {
   const queryClient = useQueryClient();
-  const [selectedYmd, setSelectedYmd] = React.useState(todayLocalYmd);
+  const searchParams = useSearchParams();
+  const dateParam = searchParams.get("date");
+  const initialYmd =
+    dateParam && isValidYmd(dateParam) ? dateParam : todayLocalYmd();
+  const [selectedYmd, setSelectedYmd] = React.useState(initialYmd);
+
+  React.useEffect(() => {
+    if (dateParam && isValidYmd(dateParam)) {
+      setSelectedYmd(dateParam);
+    }
+  }, [dateParam]);
   const [pnlInput, setPnlInput] = React.useState("");
   const [notes, setNotes] = React.useState("");
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -181,6 +197,9 @@ export default function ReportPage() {
         await queryClient.invalidateQueries({
           queryKey: reportQueryKey(strategyId, selectedYmd),
         });
+        await queryClient.invalidateQueries({
+          queryKey: ["reports", strategyId],
+        });
       }
       setFormError(null);
       setSaveBanner(
@@ -194,6 +213,9 @@ export default function ReportPage() {
       if (strategyId) {
         void queryClient.invalidateQueries({
           queryKey: reportQueryKey(strategyId, selectedYmd),
+        });
+        void queryClient.invalidateQueries({
+          queryKey: ["reports", strategyId],
         });
       }
     },

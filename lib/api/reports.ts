@@ -5,6 +5,19 @@ import type {
 } from "@/lib/types/api/reports";
 
 type ReportResponse = { report: ReportDto };
+type ReportsListResponse = { reports: ReportDto[] };
+
+export async function fetchReportsList(
+  strategyId: string,
+): Promise<ReportDto[]> {
+  const res = await fetch(`/api/strategies/${strategyId}/reports`, {
+    method: "GET",
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to load reports");
+  const data = (await res.json()) as ReportsListResponse;
+  return data.reports ?? [];
+}
 
 export async function fetchReportForDate(
   strategyId: string,
